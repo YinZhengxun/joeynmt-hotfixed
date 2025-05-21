@@ -572,8 +572,7 @@ def delete_ckpt(to_delete: Path) -> None:
             e,
         )
 
-
-def symlink_update(target: Path, link_name: Path) -> Optional[Path]:
+'''def symlink_update(target: Path, link_name: Path) -> Optional[Path]:
     """
     This function finds the file that the symlink currently points to, sets it
     to the new target, and returns the previous target if it exists.
@@ -594,7 +593,33 @@ def symlink_update(target: Path, link_name: Path) -> Optional[Path]:
         link_name.symlink_to(target)
         return current_last
     link_name.symlink_to(target)
-    return None
+    return None'''
+import shutil
+import os
+import platform
+
+def symlink_update(target: Path, link_name: Path) -> Optional[Path]:
+    """
+    Update symlink or fallback to file copy if symlink fails (esp. on Windows).
+
+    :param target: Filename only, e.g. "500.ckpt"
+    :param link_name: Full path, e.g. models/model_name/latest.ckpt
+    """
+    if link_name.exists() or link_name.is_symlink():
+        link_name.unlink()
+
+    try:
+        # First try to create symlink
+        link_name.symlink_to(target)
+        return target
+    except (OSError, NotImplementedError):
+        # Fallback: manually copy file if symlink fails
+        full_target_path = link_name.parent / target  # this fixes the FileNotFoundError
+        if not full_target_path.exists():
+            raise FileNotFoundError(f"Cannot find checkpoint file at {full_target_path}")
+        shutil.copyfile(full_target_path, link_name)
+        return None
+
 
 
 def flatten(array: List[List[Any]]) -> List[Any]:
